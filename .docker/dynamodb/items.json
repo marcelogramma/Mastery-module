@@ -1,0 +1,52 @@
+{
+    "company": [
+        {
+            "PutRequest": {
+                "Item": {
+                    "id": {
+                        "N": "42"
+                    },
+                    "name": {
+                        "S": "Fede RL03 SRL"
+                    },
+                    "email": {
+                        "S": "argentina@Fede RL03.com"
+                    },
+                    "address": {
+                        "S": "Av. Juramento 1475 12 8"
+                    },
+                    "phone": {
+                        "S": "+54 11 60092133"
+                    },
+                    "is_active": {
+                        "BOOL": false
+                    }
+                }
+            }
+        },
+        {
+            "PutRequest": {
+                "Item": {
+                    "id": {
+                        "N": "100"
+                    },
+                    "name": {
+                        "S": "Fede RL03 SAPI de CV"
+                    },
+                    "email": {
+                        "S": "mexico@Fede RL03.com"
+                    },
+                    "address": {
+                        "S": "Insurgentes Sur 318"
+                    },
+                    "phone": {
+                        "S": "+52 55 50257777"
+                    },
+                    "is_active": {
+                        "BOOL": false
+                    }
+                }
+            }
+        }
+    ]
+}

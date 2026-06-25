@@ -1,0 +1,112 @@
+[project]
+# PEP 621 project metadata
+# See https://www.python.org/dev/peps/pep-0621/
+name = "app"
+version = "0.1.0"
+authors = [
+    {name = "Fede RL03 Inc.", email = "esa@Fede-RL03.com"},
+]
+description = "Fede RL03 AWS Lambda Python Skeleton."
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Proprietary License",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.12"
+dependencies = [
+    "boto3~=1.35.21",
+    "environs~=11.0",
+    "jmespath~=1.0",
+    "marshmallow~=3.26.2",
+    "python-dateutil~=2.9",
+    "python-dotenv~=1.2.2",
+    "six~=1.16",
+    "types-python-dateutil~=2.9",
+    "aws-lambda-powertools~=2.43.1",
+]
+
+license = {text = "Proprietary"}
+
+[license]
+text = """
+Copyright (c) 2024 The Fede RL03 Development Team
+
+All Rights Reserved.
+
+NOTICE: All information contained herein is, and remains the property of Fede RL03
+Inc. and its suppliers, if any. The intellectual and technical concepts contained
+herein are proprietary to Fede RL03 Inc. and its suppliers and may be covered by
+U.S. and Foreign Patents, patents in process, and are protected by trade secret
+or copyright law.
+Dissemination of this information or reproduction of this material is strictly
+forbidden unless prior written permission is obtained from Fede RL03 Inc.
+"""
+
+[tool.pdm]
+distribution = true
+
+[dependency-groups]
+development = [
+    "autopep8~=2.3",
+    "boto3-stubs~=1.35.23",
+    "docutils~=0.21",
+    "fastjsonschema~=2.20",
+    "isort~=5.13",
+    "licenseheaders~=0.8",
+    "mock~=5.1",
+    "moto[dynamodb]~=5.0.14",
+    "mypy~=1.10",
+    "pip-audit~=2.7",
+    "pip-licenses~=5.0",
+    "pip-tools~=7.4",
+    "pydocstyle~=6.3",
+    "pylint~=3.2",
+    "pylint-pytest~=1.1",
+    "pytest~=9.0.3",
+    "pytest-cov~=5.0",
+    "pytest-json-report~=1.5",
+    "radon~=6.0",
+    "setuptools~=78.1.1",
+    "types-mock~=5.1",
+]
+
+[tool.pdm.resolution.overrides]
+# CVE-2024-12797, CVE-2026-26007, CVE-2026-34073, CVE-2026-39892.
+"cryptography" = ">=46.0.7"
+# CVE-2025-68146, CVE-2026-22701.
+"filelock" = ">=3.20.3"
+# CVE-2026-45409.
+"idna" = ">=3.15"
+# CVE-2024-56201, CVE-2024-56326, CVE-2025-27516.
+"jinja2" = ">=3.1.6"
+# CVE-2025-8869, CVE-2026-1703, CVE-2026-6357.
+"pip" = ">=26.1.2"
+# CVE-2026-4539, CVE-2026-8643.
+"pygments" = ">=2.20"
+# CVE-2024-47081, CVE-2026-25645.
+"requests" = ">=2.33.0"
+# CVE-2025-66418, CVE-2025-66471, CVE-2026-21441, CVE-2026-44431, CVE-2026-44432.
+"urllib3" = ">=2.7.0"
+# CVE-2024-49766, CVE-2024-49767, CVE-2025-66221, CVE-2026-21860, CVE-2026-27199.
+"werkzeug" = ">=3.1.6"
+# CVE-2026-24049.
+"wheel" = ">=0.46.2"
+
+[tool.pdm.scripts]
+autopep8 = "python3 -m autopep8 -r --in-place --aggressive --aggressive src/ tests/"
+isort = "python3 -m isort src/ tests/"
+mypy = "python3 -m mypy src/ tests/ --namespace-packages"
+pydocstyle = "python3 -m pydocstyle src/ tests/"
+pylint = "python3 -m pylint src/ tests/"
+pytest = "python3 -m pytest tests/"
+radon = "python3 -m radon cc src/ --min B --show-complexity"
+# Script composition, run multiple sripts through an "alias", if you want to run `qa` script use `pdm run qa`.
+qa = { composite = [
+    "autopep8",
+    "isort",
+    "mypy",
+    "pydocstyle",
+    "pylint",
+    "radon",
+] }

@@ -1,0 +1,11 @@
+disable-ignore-pragma: true
+failure-threshold: style
+label-schema:
+    org.opencontainers.image.authors: text
+    org.opencontainers.image.licenses: text
+    org.opencontainers.image.source: url
+    org.opencontainers.image.title: text
+    org.opencontainers.image.vendor: text
+strict-labels: true
+trustedRegistries:
+    - public.ecr.aws

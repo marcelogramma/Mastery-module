@@ -1,0 +1,17 @@
+# Default state for all rules.
+default: true
+
+# Path to configuration file to extend.
+extends: null
+
+# Line length.
+MD013:
+    line_length: 250
+    code_blocks: false
+    tables: false
+
+# Inline HTML.
+MD033: false
+
+# Ordered list item prefix (allow sequential numbering).
+MD029: false

@@ -1,0 +1,23 @@
+name: 'PR Review'
+
+on:
+    pull_request:
+        types:
+            - opened
+            - ready_for_review
+
+jobs:
+    auto-assign:
+        name: 'Auto-assign reviewers'
+        if: ${{ !github.event.pull_request.draft }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            pull-requests: write
+        steps:
+            -
+                name: 'Request review from CODEOWNERS'
+                env:
+                    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                run: |
+                    echo "PR opened and ready for review. CODEOWNERS will be auto-assigned by GitHub."

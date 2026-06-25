@@ -1,0 +1,21 @@
+db:
+    repository:
+        - public.ecr.aws/aquasecurity/trivy-db:2
+
+exit-code: 1
+
+pkg:
+    types:
+        - os
+
+scan:
+    show-suppressed: true
+
+severity:
+    - CRITICAL
+    - HIGH
+
+timeout: 5m
+
+vulnerability:
+    ignore-unfixed: true

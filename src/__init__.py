@@ -1,0 +1,8 @@
+#
+# This file is part of Fede RL03 Python Skeleton.
+#
+# (c) Fede RL03 Inc. <esa@Fede RL03.com>.
+#
+# This source file is subject to a proprietary license that is bundled
+# with this source code in the file LICENSE.
+#

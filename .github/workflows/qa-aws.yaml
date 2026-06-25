@@ -1,0 +1,97 @@
+name: 'Quality Assurance - AWS'
+
+on:
+    pull_request:
+        paths:
+            - '.aws/**/*'
+            - '.docker/**/*'
+    schedule:
+        -
+            cron: '0 6 * * *'
+
+jobs:
+    qa-aws-cloudformation:
+        name: 'Quality Assurance - AWS CloudFormation'
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            -
+                name: 'Checkout'
+                uses: 'actions/checkout@v4'
+            -
+                name: 'Set up Python'
+                uses: 'actions/setup-python@v5'
+                with:
+                    python-version: '3.12'
+            -
+                name: 'Install cfn-lint'
+                run: pip install cfn-lint~=1.48
+            -
+                name: 'Create SAM config file'
+                run: cp -p .aws/sam/samconfig.toml.dist .aws/sam/samconfig.toml
+            -
+                name: 'Run cfn-lint'
+                run: cfn-lint --config-file .aws/sam/.cfnlintrc.yaml
+
+    qa-aws-cfn-guard:
+        name: 'Quality Assurance - AWS CloudFormation Guard'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            -
+                name: 'Checkout'
+                uses: 'actions/checkout@v4'
+            -
+                name: 'Install cfn-guard'
+                run: |
+                    curl -L "https://github.com/aws-cloudformation/cloudformation-guard/releases/latest/download/cfn-guard-v3-ubuntu-latest.tar.gz" | tar xz
+                    sudo mv cfn-guard-v3-ubuntu-latest/cfn-guard /usr/local/bin/
+            -
+                name: 'Validate templates against policy guards'
+                run: |
+                    cfn-guard validate \
+                        --data .aws/sam/ \
+                        --rules .aws/sam/guards/ \
+                        --show-summary all
+
+    qa-aws-sam:
+        name: 'Quality Assurance - AWS SAM'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            -
+                name: 'Checkout'
+                uses: 'actions/checkout@v4'
+            -
+                name: 'Set up Python'
+                uses: 'actions/setup-python@v5'
+                with:
+                    python-version: '3.12'
+            -
+                name: 'Install AWS SAM CLI'
+                run: pip install aws-sam-cli~=1.159
+            -
+                name: 'Create SAM config file'
+                run: cp -p .aws/sam/samconfig.toml.dist .aws/sam/samconfig.toml
+            -
+                name: 'Validate SAM template'
+                run: sam validate --lint --config-file .aws/sam/samconfig.toml
+
+    check-qa:
+        name: 'Quality Assurance'
+        if: ${{ always() }}
+        runs-on: ubuntu-latest
+        needs:
+            - qa-aws-cloudformation
+            - qa-aws-cfn-guard
+            - qa-aws-sam
+        steps:
+            -
+                name: 'Check failure'
+                id: check-failure
+                if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+                run: echo 'Failed.' && exit 1;
+            -
+                name: 'Check success'
+                if: ${{ steps.check-failure.outcome == 'skipped' }}
+                run: echo 'Success.' && exit 0;

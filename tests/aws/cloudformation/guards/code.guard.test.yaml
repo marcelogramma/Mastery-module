@@ -1,0 +1,116 @@
+-
+    name: 'Verify all rules PASS with valid local paths'
+    input:
+        Resources:
+            MyLambda:
+                Type: 'AWS::Lambda::Function'
+                Properties:
+                    Code: './src/lambda-app'
+            MySAMFunc:
+                Type: 'AWS::Serverless::Function'
+                Properties:
+                    CodeUri: './src/sam-app'
+            MySFN:
+                Type: 'AWS::Serverless::StateMachine'
+                Properties:
+                    DefinitionUri: './pipeline.asl.json'
+    expectations:
+        rules:
+            enforce_standard_lambda_local_path: PASS
+            enforce_sam_lambda_local_path: PASS
+            enforce_external_sam_sfn_definition: PASS
+
+-
+    name: 'Fail Standard Lambda (using ZipFile object)'
+    input:
+        Resources:
+            BadLambda:
+                Type: 'AWS::Lambda::Function'
+                Properties:
+                    Code:
+                        ZipFile: 'index.handler'
+    expectations:
+        rules:
+            enforce_standard_lambda_local_path: FAIL
+            enforce_sam_lambda_local_path: SKIP
+            enforce_external_sam_sfn_definition: SKIP
+
+-
+    name: 'Fail SAM Function (using InlineCode)'
+    input:
+        Resources:
+            BadSAMFunc:
+                Type: 'AWS::Serverless::Function'
+                Properties:
+                    CodeUri: './path'
+                    InlineCode: 'print("hello")'
+    expectations:
+        rules:
+            enforce_standard_lambda_local_path: SKIP
+            enforce_sam_lambda_local_path: FAIL
+            enforce_external_sam_sfn_definition: SKIP
+
+-
+    name: 'Fail SAM State Machine (Missing DefinitionUri)'
+    input:
+        Resources:
+            BadSFN:
+                Type: 'AWS::Serverless::StateMachine'
+                Properties:
+                    Definition:
+                        StartAt: Hello
+                        States:
+                            Hello:
+                                Type: Pass
+                                End: true
+    expectations:
+        rules:
+            enforce_standard_lambda_local_path: SKIP
+            enforce_sam_lambda_local_path: SKIP
+            enforce_external_sam_sfn_definition: FAIL
+
+-
+    name: 'Fail on Newlines (Regex check)'
+    input:
+        Resources:
+            NewlineFunc:
+                Type: 'AWS::Serverless::Function'
+                Properties:
+                    CodeUri: |
+                        ./path/with/
+                        newline
+    expectations:
+        rules:
+            enforce_standard_lambda_local_path: SKIP
+            enforce_sam_lambda_local_path: FAIL
+            enforce_external_sam_sfn_definition: SKIP
+
+-
+    name: 'Fail SAM State Machine (Multiline DefinitionUri)'
+    input:
+        Resources:
+            MultilineUriSFN:
+                Type: 'AWS::Serverless::StateMachine'
+                Properties:
+                    DefinitionUri: |
+                        ./state-machines/
+                        pipeline.asl.json
+    expectations:
+        rules:
+            enforce_standard_lambda_local_path: SKIP
+            enforce_sam_lambda_local_path: SKIP
+            enforce_external_sam_sfn_definition: FAIL
+
+-
+    name: 'Fail SAM State Machine (Empty DefinitionUri)'
+    input:
+        Resources:
+            EmptyUriSFN:
+                Type: 'AWS::Serverless::StateMachine'
+                Properties:
+                    DefinitionUri: ''
+    expectations:
+        rules:
+            enforce_standard_lambda_local_path: SKIP
+            enforce_sam_lambda_local_path: SKIP
+            enforce_external_sam_sfn_definition: FAIL

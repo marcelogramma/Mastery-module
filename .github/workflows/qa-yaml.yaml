@@ -1,0 +1,44 @@
+name: 'Quality Assurance - YAML'
+
+on:
+    pull_request:
+        paths:
+            - '**.yaml'
+            - '**.yml'
+            - '.yamllint.yaml'
+    schedule:
+        -
+            cron: '0 6 * * *'
+
+jobs:
+    qa-yaml:
+        name: 'Quality Assurance - YAML'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            -
+                name: 'Checkout'
+                uses: 'actions/checkout@v4'
+            -
+                name: 'Install yamllint'
+                run: pip install yamllint
+            -
+                name: 'Run yamllint'
+                run: yamllint --strict .
+
+    check-qa:
+        name: 'Quality Assurance'
+        if: ${{ always() }}
+        runs-on: ubuntu-latest
+        needs:
+            - qa-yaml
+        steps:
+            -
+                name: 'Check failure'
+                id: check-failure
+                if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+                run: echo 'Failed.' && exit 1;
+            -
+                name: 'Check success'
+                if: ${{ steps.check-failure.outcome == 'skipped' }}
+                run: echo 'Success.' && exit 0;

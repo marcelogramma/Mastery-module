@@ -1,0 +1,17 @@
+# AWS SAM
+.aws/sam/build*
+.aws/sam/samconfig.toml
+
+__pycache__
+*.egg-info/
+/.cache/
+/.mypy_cache/
+/.pylint_cache/
+/.pytest/
+/.venv/
+/build/
+/dist/
+zz_docker
+.kiro-chat
+.aws/sam/samconfig-Mastery-Module.toml
+.kiro-cli

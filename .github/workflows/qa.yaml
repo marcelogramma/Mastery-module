@@ -1,0 +1,79 @@
+name: 'Quality Assurance'
+
+on:
+    pull_request: null
+    schedule:
+        -
+            cron: '0 6 * * *'
+
+jobs:
+    qa-python:
+        name: 'Quality Assurance - Python'
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        steps:
+            -
+                name: 'Checkout'
+                uses: 'actions/checkout@v4'
+            -
+                name: 'Set up Python'
+                uses: 'actions/setup-python@v5'
+                with:
+                    python-version: '3.12'
+            -
+                name: 'Install PDM'
+                run: pip install pdm~=2.22
+            -
+                name: 'Install dependencies'
+                run: pdm install --dev
+            -
+                name: 'Run autopep8 (check mode)'
+                run: pdm run python3 -m autopep8 -r --diff --aggressive --aggressive src/ tests/ && echo "OK"
+            -
+                name: 'Run isort (check mode)'
+                run: pdm run python3 -m isort --check-only --diff src/ tests/
+            -
+                name: 'Run mypy'
+                run: pdm run mypy
+            -
+                name: 'Run pydocstyle'
+                run: pdm run pydocstyle
+            -
+                name: 'Run pylint'
+                run: pdm run pylint
+            -
+                name: 'Run radon'
+                run: pdm run radon
+
+    qa-spelling:
+        name: 'Quality Assurance - Spelling'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            -
+                name: 'Checkout'
+                uses: 'actions/checkout@v4'
+            -
+                name: 'Install cspell'
+                run: 'npm install -g cspell@^9.1.3 @cspell/dict-es-es@>=3.0.3'
+            -
+                name: 'Run cspell'
+                run: cspell lint --config .cspell/cspell.yaml
+
+    check-qa:
+        name: 'Quality Assurance'
+        if: ${{ always() }}
+        runs-on: ubuntu-latest
+        needs:
+            - qa-python
+            - qa-spelling
+        steps:
+            -
+                name: 'Check failure'
+                id: check-failure
+                if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+                run: echo 'Failed.' && exit 1;
+            -
+                name: 'Check success'
+                if: ${{ steps.check-failure.outcome == 'skipped' }}
+                run: echo 'Success.' && exit 0;

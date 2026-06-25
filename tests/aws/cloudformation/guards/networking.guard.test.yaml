@@ -1,0 +1,532 @@
+# Tests for `.aws/sam/guards/networking.guard`.
+
+-
+    name: PASS - Subnet with MapPublicIpOnLaunch false is compliant
+    input:
+        Resources:
+            PrivateSubnet:
+                Type: AWS::EC2::Subnet
+                Properties:
+                    VpcId: vpc-12345678
+                    CidrBlock: 10.0.1.0/24
+                    MapPublicIpOnLaunch: false
+    expectations:
+        rules:
+            subnet_no_public_ip: PASS
+            vpc_dns_enabled: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: FAIL - Subnet with MapPublicIpOnLaunch true is non-compliant
+    input:
+        Resources:
+            PublicSubnet:
+                Type: AWS::EC2::Subnet
+                Properties:
+                    VpcId: vpc-12345678
+                    CidrBlock: 10.0.0.0/24
+                    MapPublicIpOnLaunch: true
+    expectations:
+        rules:
+            subnet_no_public_ip: FAIL
+            vpc_dns_enabled: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: PASS - VPC with DNS support and hostnames enabled is compliant
+    input:
+        Resources:
+            AcmeVpc:
+                Type: AWS::EC2::VPC
+                Properties:
+                    CidrBlock: 10.0.0.0/16
+                    EnableDnsSupport: true
+                    EnableDnsHostnames: true
+    expectations:
+        rules:
+            vpc_dns_enabled: PASS
+            subnet_no_public_ip: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: FAIL - VPC with DNS support disabled is non-compliant
+    input:
+        Resources:
+            AcmeVpc:
+                Type: AWS::EC2::VPC
+                Properties:
+                    CidrBlock: 10.0.0.0/16
+                    EnableDnsSupport: false
+                    EnableDnsHostnames: true
+    expectations:
+        rules:
+            vpc_dns_enabled: FAIL
+            subnet_no_public_ip: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: FAIL - VPC with DNS hostnames disabled is non-compliant
+    input:
+        Resources:
+            AcmeVpc:
+                Type: AWS::EC2::VPC
+                Properties:
+                    CidrBlock: 10.0.0.0/16
+                    EnableDnsSupport: true
+                    EnableDnsHostnames: false
+    expectations:
+        rules:
+            vpc_dns_enabled: FAIL
+            subnet_no_public_ip: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: PASS - Security group with described ingress and egress rules is compliant
+    input:
+        Resources:
+            GlueSecurityGroup:
+                Type: AWS::EC2::SecurityGroup
+                Properties:
+                    GroupDescription: Security group for Glue VPC connection
+                    VpcId: vpc-12345678
+                    SecurityGroupIngress:
+                        -
+                            IpProtocol: tcp
+                            FromPort: 5439
+                            ToPort: 5439
+                            SourceSecurityGroupId: sg-abcdef01
+                            Description: Allow Redshift access from Glue
+                    SecurityGroupEgress:
+                        -
+                            IpProtocol: '-1'
+                            CidrIp: 0.0.0.0/0
+                            Description: Allow all outbound traffic
+    expectations:
+        rules:
+            security_group_rules_have_description: PASS
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: SKIP - Security group with no ingress or egress rules is compliant (rule skips — no rules to evaluate)
+    input:
+        Resources:
+            GlueSecurityGroup:
+                Type: AWS::EC2::SecurityGroup
+                Properties:
+                    GroupDescription: Security group with no explicit rules
+                    VpcId: vpc-12345678
+    expectations:
+        rules:
+            security_group_rules_have_description: SKIP
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: FAIL - Security group with ingress rule missing Description is non-compliant
+    input:
+        Resources:
+            GlueSecurityGroup:
+                Type: AWS::EC2::SecurityGroup
+                Properties:
+                    GroupDescription: Security group for Glue VPC connection
+                    VpcId: vpc-12345678
+                    SecurityGroupIngress:
+                        -
+                            IpProtocol: tcp
+                            FromPort: 5439
+                            ToPort: 5439
+                            SourceSecurityGroupId: sg-abcdef01
+    expectations:
+        rules:
+            security_group_rules_have_description: FAIL
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: FAIL - Security group with egress rule missing Description is non-compliant
+    input:
+        Resources:
+            GlueSecurityGroup:
+                Type: AWS::EC2::SecurityGroup
+                Properties:
+                    GroupDescription: Security group for Glue VPC connection
+                    VpcId: vpc-12345678
+                    SecurityGroupEgress:
+                        -
+                            IpProtocol: '-1'
+                            CidrIp: 0.0.0.0/0
+    expectations:
+        rules:
+            security_group_rules_have_description: FAIL
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: PASS - DMS replication instance with PubliclyAccessible false is compliant
+    input:
+        Resources:
+            DmsReplicationInstance:
+                Type: AWS::DMS::ReplicationInstance
+                Properties:
+                    ReplicationInstanceIdentifier: acme-project-replication-instance-dms-dev
+                    ReplicationInstanceClass: dms.t3.medium
+                    AllocatedStorage: 100
+                    MultiAZ: false
+                    PubliclyAccessible: false
+                    AutoMinorVersionUpgrade: true
+    expectations:
+        rules:
+            dms_replication_instance_not_publicly_accessible: PASS
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: FAIL - DMS replication instance with PubliclyAccessible true is non-compliant
+    input:
+        Resources:
+            DmsReplicationInstance:
+                Type: AWS::DMS::ReplicationInstance
+                Properties:
+                    ReplicationInstanceIdentifier: acme-project-replication-instance-dms-dev
+                    ReplicationInstanceClass: dms.t3.medium
+                    AllocatedStorage: 100
+                    MultiAZ: false
+                    PubliclyAccessible: true
+                    AutoMinorVersionUpgrade: true
+    expectations:
+        rules:
+            dms_replication_instance_not_publicly_accessible: FAIL
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: FAIL - DMS replication instance without PubliclyAccessible property is non-compliant
+    input:
+        Resources:
+            DmsReplicationInstance:
+                Type: AWS::DMS::ReplicationInstance
+                Properties:
+                    ReplicationInstanceIdentifier: acme-project-replication-instance-dms-dev
+                    ReplicationInstanceClass: dms.t3.medium
+                    AllocatedStorage: 100
+                    MultiAZ: false
+                    AutoMinorVersionUpgrade: true
+    expectations:
+        rules:
+            dms_replication_instance_not_publicly_accessible: FAIL
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: PASS - Interface VPC endpoint with PrivateDnsEnabled true is compliant
+    input:
+        Resources:
+            SecretsManagerVpcEndpoint:
+                Type: AWS::EC2::VPCEndpoint
+                Properties:
+                    VpcEndpointType: Interface
+                    ServiceName: com.amazonaws.us-east-1.secretsmanager
+                    VpcId: vpc-12345678
+                    SubnetIds:
+                        - subnet-11111111
+                    SecurityGroupIds:
+                        - sg-abcdef01
+                    PrivateDnsEnabled: true
+    expectations:
+        rules:
+            vpc_interface_endpoint_private_dns_enabled: PASS
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: SKIP - Gateway VPC endpoint is not evaluated by this rule
+    input:
+        Resources:
+            S3GatewayVpcEndpoint:
+                Type: AWS::EC2::VPCEndpoint
+                Properties:
+                    VpcEndpointType: Gateway
+                    ServiceName: com.amazonaws.us-east-1.s3
+                    VpcId: vpc-12345678
+                    RouteTableIds:
+                        - rtb-11111111
+    expectations:
+        rules:
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: SKIP - Interface VPC endpoint with PrivateDnsEnabled false is excluded from rule
+    input:
+        Resources:
+            SnsInterfaceVpcEndpoint:
+                Type: AWS::EC2::VPCEndpoint
+                Properties:
+                    VpcEndpointType: Interface
+                    ServiceName: com.amazonaws.us-east-1.sns
+                    VpcId: vpc-12345678
+                    SubnetIds:
+                        - subnet-11111111
+                    SecurityGroupIds:
+                        - sg-abcdef01
+                    PrivateDnsEnabled: false
+    expectations:
+        rules:
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: SKIP - SNS VPC endpoint uses PrivateDnsEnabled false for multi-variant isolation
+    input:
+        Resources:
+            SnsInterfaceVpcEndpoint:
+                Type: AWS::EC2::VPCEndpoint
+                Properties:
+                    VpcEndpointType: Interface
+                    ServiceName: com.amazonaws.us-east-1.sns
+                    VpcId: vpc-12345678
+                    SubnetIds:
+                        - subnet-11111111
+                        - subnet-22222222
+                    SecurityGroupIds:
+                        - sg-abcdef01
+                    PrivateDnsEnabled: false
+    expectations:
+        rules:
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: SKIP - Interface VPC endpoint without PrivateDnsEnabled property is excluded from rule
+    input:
+        Resources:
+            KmsInterfaceVpcEndpoint:
+                Type: AWS::EC2::VPCEndpoint
+                Properties:
+                    VpcEndpointType: Interface
+                    ServiceName: com.amazonaws.us-east-1.kms
+                    VpcId: vpc-12345678
+                    SubnetIds:
+                        - subnet-11111111
+                    SecurityGroupIds:
+                        - sg-abcdef01
+    expectations:
+        rules:
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: PASS - Standalone security group ingress resource with Description is compliant
+    input:
+        Resources:
+            ProcessingIngressRule:
+                Type: AWS::EC2::SecurityGroupIngress
+                Properties:
+                    GroupId: sg-abcdef01
+                    IpProtocol: tcp
+                    FromPort: 443
+                    ToPort: 443
+                    SourceSecurityGroupId: sg-fedcba10
+                    Description: Allow HTTPS from processing Lambdas
+    expectations:
+        rules:
+            security_group_rule_resources_have_description: PASS
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rules_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: FAIL - Standalone security group ingress resource without Description is non-compliant
+    input:
+        Resources:
+            ProcessingIngressRule:
+                Type: AWS::EC2::SecurityGroupIngress
+                Properties:
+                    GroupId: sg-abcdef01
+                    IpProtocol: tcp
+                    FromPort: 443
+                    ToPort: 443
+                    SourceSecurityGroupId: sg-fedcba10
+    expectations:
+        rules:
+            security_group_rule_resources_have_description: FAIL
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rules_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+            dms_endpoint_kms_encryption_required: SKIP
+
+-
+    name: PASS - Oracle source endpoint with KmsKeyId is compliant
+    input:
+        Resources:
+            OracleSourceEndpoint:
+                Type: AWS::DMS::Endpoint
+                Properties:
+                    EndpointIdentifier: oracle-src-dev
+                    EndpointType: source
+                    EngineName: oracle
+                    KmsKeyId: arn:aws:kms:us-east-1:123456789012:key/mrk-1234abcd
+                    OracleSettings:
+                        SecretsManagerAccessRoleArn: arn:aws:iam::123456789012:role/dms-source-role
+                        SecretsManagerSecretId: arn:aws:secretsmanager:us-east-1:123456789012:secret:oracle/source
+    expectations:
+        rules:
+            dms_endpoint_kms_encryption_required: PASS
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+
+-
+    name: FAIL - Oracle source endpoint without KmsKeyId is non-compliant
+    input:
+        Resources:
+            OracleSourceEndpoint:
+                Type: AWS::DMS::Endpoint
+                Properties:
+                    EndpointIdentifier: oracle-src-dev
+                    EndpointType: source
+                    EngineName: oracle
+                    OracleSettings:
+                        SecretsManagerAccessRoleArn: arn:aws:iam::123456789012:role/dms-source-role
+                        SecretsManagerSecretId: arn:aws:secretsmanager:us-east-1:123456789012:secret:oracle/source
+    expectations:
+        rules:
+            dms_endpoint_kms_encryption_required: FAIL
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+
+-
+    name: PASS - S3 target endpoint with SSE_KMS and key id is compliant
+    input:
+        Resources:
+            S3TargetEndpoint:
+                Type: AWS::DMS::Endpoint
+                Properties:
+                    EndpointIdentifier: s3-target-dev
+                    EndpointType: target
+                    EngineName: s3
+                    S3Settings:
+                        BucketName: acme-project-dev-us-east-1-data-raw
+                        BucketFolder: landing/
+                        ServiceAccessRoleArn: arn:aws:iam::123456789012:role/dms-s3-target-role
+                        EncryptionMode: SSE_KMS
+                        ServerSideEncryptionKmsKeyId: arn:aws:kms:us-east-1:123456789012:key/mrk-1234abcd
+    expectations:
+        rules:
+            dms_endpoint_kms_encryption_required: PASS
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP
+
+-
+    name: FAIL - S3 target endpoint without ServerSideEncryptionKmsKeyId is non-compliant
+    input:
+        Resources:
+            S3TargetEndpoint:
+                Type: AWS::DMS::Endpoint
+                Properties:
+                    EndpointIdentifier: s3-target-dev
+                    EndpointType: target
+                    EngineName: s3
+                    S3Settings:
+                        BucketName: acme-project-dev-us-east-1-data-raw
+                        BucketFolder: landing/
+                        ServiceAccessRoleArn: arn:aws:iam::123456789012:role/dms-s3-target-role
+                        EncryptionMode: SSE_KMS
+    expectations:
+        rules:
+            dms_endpoint_kms_encryption_required: FAIL
+            subnet_no_public_ip: SKIP
+            vpc_dns_enabled: SKIP
+            security_group_rules_have_description: SKIP
+            security_group_rule_resources_have_description: SKIP
+            dms_replication_instance_not_publicly_accessible: SKIP
+            vpc_interface_endpoint_private_dns_enabled: SKIP

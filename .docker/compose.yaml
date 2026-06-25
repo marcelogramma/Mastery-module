@@ -1,0 +1,115 @@
+services:
+    dynamodb:
+        image: public.ecr.aws/aws-dynamodb-local/aws-dynamodb-local:2.5.2
+        ports:
+            - ${DYNAMODB_PORT:-8000}:8000
+        volumes:
+            - ./dynamodb/data:/home/dynamodblocal/data
+        working_dir: /home/dynamodblocal
+        networks:
+            - app-network
+        healthcheck:
+            test: ['CMD-SHELL', '[ "$(curl -s -o /dev/null -I -w ''%{http_code}'' http://localhost:8000)" == "400" ]']
+            interval: 10s
+            timeout: 2s
+            retries: 5
+        command: '-jar DynamoDBLocal.jar -sharedDb -dbPath ./data'
+        env_file:
+            - ./.env
+    cli:
+        build:
+            context: ./../.
+            dockerfile: ./.docker/app/Dockerfile
+            target: ${DOCKER_STAGE_CLI:-cli-dev}
+        volumes:
+            - ./../:/app
+            - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-auth.sock:ro
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+        tmpfs:
+            - /app/.docker/secrets/
+        working_dir: /app
+        tty: true
+        stdin_open: true
+        init: true
+        networks:
+            - app-network
+        deploy:
+            replicas: 0
+        secrets:
+            -
+                source: aws_credentials
+                target: ${AWS_SHARED_CREDENTIALS_FILE}
+        environment:
+            SSH_AUTH_SOCK: /ssh-auth.sock
+        env_file:
+            - ./.env
+    app:
+        build:
+            context: ./../.
+            dockerfile: ./.docker/app/Dockerfile
+            target: cli-dev
+        volumes:
+            - ./../:/app
+            # We need to mount the `/tmp` directory because the command `sam local start-api` serves the contents there.
+            - /tmp:/tmp
+            - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-auth.sock:ro
+            # Docker socket must be mounted in order to allow `sam local start-api` to allow the provisioning of the local
+            # AWS Lambda Docker container.
+            # @see: https://gist.github.com/Adam-Kaplan/149c4a9f7af367d242153bca2c771923.
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+        tmpfs:
+            - /app/.docker/secrets/
+        working_dir: /app
+        ports:
+            - 3001:3001
+        network_mode: host
+        command: [
+            'sam', 'local', 'start-lambda',
+            '--add-host', 'host.docker.internal:172.17.0.1',
+            '--add-host', 'localhost:172.17.0.1',
+            '--config-file', '/app/.aws/sam/samconfig.toml',
+            '--container-host', '172.17.0.1',
+            '--container-host-interface', '0.0.0.0',
+            '--debug',
+            '--docker-network', '${COMPOSE_PROJECT_NAME}_app-network',
+            '--parameter-overrides', 'DynamoDbUri=http://host.docker.internal:8000',
+            '--port', '3001',
+            '--warm-containers', 'EAGER'
+        ]
+        healthcheck:
+            test:
+                - 'CMD-SHELL'
+                - |
+                    [[ "$(aws lambda invoke \
+                            --function-name "ApiLambdaFindCompany" \
+                            --endpoint-url "http://127.0.0.1:3001" \
+                            --cli-binary-format raw-in-base64-out \
+                            --payload '{"company_id": 0}' \
+                            --no-verify-ssl \
+                            /dev/stdout \
+                        )" == *"\"status_code\": 404"* \
+                    ]]
+            start_interval: 10s
+            start_period: 50s
+            interval: 10m
+            timeout: 2s
+            retries: 5
+        deploy:
+            replicas: 1
+        secrets:
+            -
+                source: aws_credentials
+                target: ${AWS_SHARED_CREDENTIALS_FILE}
+        environment:
+            DOCKER_HOST: unix:///var/run/docker.sock
+            SSH_AUTH_SOCK: /ssh-auth.sock
+        env_file:
+            - ./.env
+
+secrets:
+    aws_credentials:
+        file: ./secrets/aws_credentials.txt
+
+networks:
+    app-network:
+        driver: bridge

@@ -1,0 +1,35 @@
+extends: default
+
+ignore: |
+    bin/
+    build/
+
+rules:
+    braces:
+        level: warning
+        max-spaces-inside: 0
+    brackets:
+        level: warning
+        max-spaces-inside: 0
+    comments: disable
+    comments-indentation: disable
+    indentation:
+        spaces: 4
+        indent-sequences: true
+    commas:
+        max-spaces-before: 0
+        min-spaces-after: 1
+        max-spaces-after: 1
+    document-start: disable
+    empty-lines:
+        max: 1
+        max-start: 0
+        max-end: 0
+    line-length: disable
+    quoted-strings:
+        quote-type: single
+        required: false
+        extra-required: ['@']
+    truthy:
+        allowed-values: ['true', 'false']
+        check-keys: false

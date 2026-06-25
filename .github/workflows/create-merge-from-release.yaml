@@ -1,0 +1,51 @@
+name: 'Create merge Pull Request from stable PATCH release'
+
+on:
+    push:
+        tags:
+            - 'v*'
+
+jobs:
+    merge-back:
+        name: 'Create merge PR to main'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: write
+            pull-requests: write
+        steps:
+            -
+                name: 'Checkout'
+                uses: 'actions/checkout@v4'
+                with:
+                    fetch-depth: 0
+            -
+                name: 'Create merge PR if from stable branch'
+                env:
+                    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                run: |
+                    TAG="${{ github.ref_name }}"
+                    VERSION="${TAG#v}"
+                    IFS='.' read -r MAJOR MINOR PATCH <<< "${VERSION}"
+
+                    # Only create merge PR for patch releases (PATCH > 0)
+                    if [[ "${PATCH}" -eq 0 ]]; then
+                        echo "Not a patch release, skipping."
+                        exit 0
+                    fi
+
+                    STABLE_BRANCH="stable/${MAJOR}.${MINOR}"
+                    MERGE_BRANCH="merge/${TAG}-to-main"
+
+                    git config user.name "github-actions[bot]"
+                    git config user.email "github-actions[bot]@users.noreply.github.com"
+
+                    git checkout main
+                    git checkout -b "${MERGE_BRANCH}"
+                    git merge "${TAG}" --no-edit || true
+                    git push -u origin "${MERGE_BRANCH}"
+
+                    gh pr create \
+                        --title "Merge ${TAG} back to main" \
+                        --body "Merges patch release ${TAG} from ${STABLE_BRANCH} back into main." \
+                        --base main

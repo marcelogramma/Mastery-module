@@ -1,0 +1,24 @@
+name: 'Clean Docker container registry'
+
+on:
+    schedule:
+        -
+            cron: '0 6 * * *'
+    workflow_dispatch: null
+
+jobs:
+    clean-registry:
+        name: 'Clean untagged container images'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            packages: write
+        steps:
+            -
+                name: 'Delete untagged images'
+                uses: 'actions/delete-package-versions@v5'
+                with:
+                    package-name: ${{ github.event.repository.name }}
+                    package-type: container
+                    delete-only-untagged-versions: true
+                    min-versions-to-keep: 5

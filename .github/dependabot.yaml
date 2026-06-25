@@ -1,0 +1,26 @@
+version: 2
+
+updates:
+    -
+        package-ecosystem: gradle
+        directory: '/'
+        schedule:
+            interval: weekly
+            time: '02:00'
+        commit-message:
+            prefix: '[SK-16] '
+        open-pull-requests-limit: 10
+        target-branch: master
+        allow:
+            -
+                dependency-type: all
+    -
+        package-ecosystem: github-actions
+        directory: '/'
+        schedule:
+            interval: weekly
+            time: '02:00'
+        commit-message:
+            prefix: '[SK-16] '
+        open-pull-requests-limit: 10
+        target-branch: master

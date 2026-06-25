@@ -1,0 +1,79 @@
+name: 'Test'
+
+on:
+    pull_request: null
+    schedule:
+        -
+            cron: '0 6 * * *'
+
+jobs:
+    test-python:
+        name: 'Test - Python'
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            -
+                name: 'Checkout'
+                uses: 'actions/checkout@v4'
+            -
+                name: 'Set up Python'
+                uses: 'actions/setup-python@v5'
+                with:
+                    python-version: '3.12'
+            -
+                name: 'Install PDM'
+                run: pip install pdm~=2.22
+            -
+                name: 'Install dependencies'
+                run: pdm install --dev
+            -
+                name: 'Run pytest'
+                run: pdm run pytest
+
+    test-cfn-guard:
+        name: 'Test - CloudFormation Guard'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            -
+                name: 'Checkout'
+                uses: 'actions/checkout@v4'
+            -
+                name: 'Install cfn-guard'
+                run: |
+                    curl -L "https://github.com/aws-cloudformation/cloudformation-guard/releases/latest/download/cfn-guard-v3-ubuntu-latest.tar.gz" | tar xz
+                    sudo mv cfn-guard-v3-ubuntu-latest/cfn-guard /usr/local/bin/
+            -
+                name: 'Create SAM config file'
+                run: cp -p .aws/sam/samconfig.toml.dist .aws/sam/samconfig.toml
+            -
+                name: 'Run cfn-guard tests'
+                run: |
+                    for RULE in .aws/sam/guards/*.guard; do
+                        FILENAME=$(basename "${RULE}")
+                        TEST_FILE="tests/aws/cloudformation/guards/${FILENAME}.test.yaml"
+                        if [ ! -f "${TEST_FILE}" ]; then
+                            echo "Missing test data for ${FILENAME}: ${TEST_FILE}" >&2
+                            exit 1
+                        fi
+                        echo "Testing ${FILENAME}..."
+                        cfn-guard test --rules-file "${RULE}" --test-data "${TEST_FILE}"
+                    done
+
+    check-test:
+        name: 'Test'
+        if: ${{ always() }}
+        runs-on: ubuntu-latest
+        needs:
+            - test-python
+            - test-cfn-guard
+        steps:
+            -
+                name: 'Check failure'
+                id: check-failure
+                if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+                run: echo 'Failed.' && exit 1;
+            -
+                name: 'Check success'
+                if: ${{ steps.check-failure.outcome == 'skipped' }}
+                run: echo 'Success.' && exit 0;

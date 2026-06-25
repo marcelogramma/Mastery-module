@@ -1,0 +1,68 @@
+name: 'Generate Changelog'
+
+on:
+    workflow_dispatch:
+        inputs:
+            release-target:
+                description: 'Select if the release must target "major", "minor" or "patch" versions.'
+                required: true
+                type: choice
+                options:
+                    - major
+                    - minor
+                    - patch
+
+jobs:
+    changelog:
+        name: 'Generate Changelog'
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        permissions:
+            contents: write
+            pull-requests: write
+        steps:
+            -
+                name: 'Checkout'
+                uses: 'actions/checkout@v4'
+                with:
+                    fetch-depth: 0
+            -
+                name: 'Generate changelog and create release PR'
+                env:
+                    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                    RELEASE_TARGET: ${{ inputs.release-target }}
+                run: |
+                    # Get latest tag
+                    LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+                    CURRENT_VERSION="${LATEST_TAG#v}"
+
+                    IFS='.' read -r MAJOR MINOR PATCH <<< "${CURRENT_VERSION}"
+
+                    case "${RELEASE_TARGET}" in
+                        major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+                        minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+                        patch) PATCH=$((PATCH + 1)) ;;
+                    esac
+
+                    NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+                    BRANCH="release/v${NEW_VERSION}"
+
+                    git config user.name "github-actions[bot]"
+                    git config user.email "github-actions[bot]@users.noreply.github.com"
+                    git checkout -b "${BRANCH}"
+
+                    # Generate changelog from git log
+                    echo "# Changelog v${NEW_VERSION}" > CHANGELOG.md
+                    echo "" >> CHANGELOG.md
+                    echo "## Changes since ${LATEST_TAG}" >> CHANGELOG.md
+                    echo "" >> CHANGELOG.md
+                    git log "${LATEST_TAG}..HEAD" --pretty=format:"- %s (%h)" >> CHANGELOG.md
+
+                    git add CHANGELOG.md
+                    git commit -m "[Release] v${NEW_VERSION}"
+                    git push -u origin "${BRANCH}"
+
+                    gh pr create \
+                        --title "[Release] v${NEW_VERSION}" \
+                        --body "Release v${NEW_VERSION} (${RELEASE_TARGET})" \
+                        --base main

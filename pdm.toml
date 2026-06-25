@@ -1,0 +1,9 @@
+[install]
+cache = false
+
+[python]
+path = "./.venv/bin/python"
+use_venv = true
+
+[venv]
+location = "./.venv"

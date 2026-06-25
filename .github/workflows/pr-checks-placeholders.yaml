@@ -1,0 +1,19 @@
+name: 'Placeholders for required checks'
+
+on:
+    pull_request: null
+
+jobs:
+    check-placeholder-qa:
+        name: 'Quality Assurance'
+        runs-on: ubuntu-latest
+        steps:
+            -
+                run: exit 0
+
+    check-placeholder-test:
+        name: 'Test'
+        runs-on: ubuntu-latest
+        steps:
+            -
+                run: exit 0

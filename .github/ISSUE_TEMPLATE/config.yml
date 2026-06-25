@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+contact_links:
+    -
+        name: JIRA
+        url: https://Fede RL03.atlassian.net/browse/Mastery
+        about: 'Project management on JIRA'
+    -
+        name: Slack
+        url: https://Fede RL03.slack.com/archives/C6LRWK23U
+        about: '#development channel on Fede RL03 Slack'

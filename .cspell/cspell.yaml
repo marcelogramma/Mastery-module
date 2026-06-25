@@ -1,0 +1,44 @@
+$schema: 'https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json'
+version: '0.2'
+language:
+    - en
+    - en-gb
+languageId:
+    - 'cpp'
+    - 'python'
+    - 'markdown'
+globRoot: '../'
+enableGlobDot: true
+files:
+    - '**/*.md'
+    - 'src/**/*.(py|sh|xml|yaml)'
+    - 'tests/**/*.(py|yaml)'
+useGitignore: true
+gitignoreRoot: '../'
+dictionaries:
+    - 'project-terms'
+    - 'stack-terms'
+    - 'cpp'
+    - 'python'
+    - 'aws'
+    - 'rust'
+    - 'bash'
+    - 'es-es'
+dictionaryDefinitions:
+    -
+        name: 'project-terms'
+        path: './project-terms.txt'
+    -
+        name: 'stack-terms'
+        path: './stack-terms.txt'
+overrides:
+    -
+        dictionaries:
+            - 'es-es'
+        filename: 'docs/translations/es/**/*.md'
+    -
+        dictionaries:
+            - 'es-es'
+        filename: 'docs/steps/**/*.md'
+import:
+    - '@cspell/dict-es-es/cspell-ext.json'

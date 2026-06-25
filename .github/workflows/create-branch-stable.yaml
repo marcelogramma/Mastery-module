@@ -1,0 +1,41 @@
+name: 'Create stable branch for PATCH version maintenance'
+
+on:
+    push:
+        tags:
+            - 'v*'
+
+jobs:
+    create-stable:
+        name: 'Create stable branch'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: write
+        steps:
+            -
+                name: 'Checkout'
+                uses: 'actions/checkout@v4'
+                with:
+                    fetch-depth: 0
+            -
+                name: 'Create stable branch from tag'
+                run: |
+                    TAG="${{ github.ref_name }}"
+                    VERSION="${TAG#v}"
+                    IFS='.' read -r MAJOR MINOR PATCH <<< "${VERSION}"
+                    STABLE_BRANCH="stable/${MAJOR}.${MINOR}"
+
+                    git config user.name "github-actions[bot]"
+                    git config user.email "github-actions[bot]@users.noreply.github.com"
+
+                    if git ls-remote --exit-code --heads origin "${STABLE_BRANCH}" > /dev/null 2>&1; then
+                        echo "Branch ${STABLE_BRANCH} already exists, updating..."
+                        git checkout "${STABLE_BRANCH}"
+                        git merge "${TAG}" --no-edit
+                        git push origin "${STABLE_BRANCH}"
+                    else
+                        echo "Creating branch ${STABLE_BRANCH}..."
+                        git checkout -b "${STABLE_BRANCH}"
+                        git push -u origin "${STABLE_BRANCH}"
+                    fi
